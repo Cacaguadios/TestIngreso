@@ -6,7 +6,7 @@ import { levelFor, scoreEvaluation } from '../../src/engine/scoring';
 import { PaqueteSchema, TaskDefinitionSchema } from '../../src/engine/schema';
 import { EvaluationSession, type Participant } from '../../src/engine/session';
 import type { Cond } from '../../src/engine/types';
-import { SAMPLE_EVALUATION, T_WIFI } from '../../src/data/sample-evaluation';
+import { EVALUACION_CORTA, T_WIFI } from '../../src/data/sample-evaluation';
 import { A, WIFI_RUTA_1 } from './helpers';
 
 const ctx = (over: Partial<Parameters<typeof evaluate>[1]> = {}) => ({
@@ -48,7 +48,7 @@ describe('esquema del paquete de POI', () => {
       version: 'test',
       puestos: [{ id: 1, nombre: 'Vendedor', evaluacionVersionId: 1 }],
       sucursales: [{ id: 4, nombre: 'Puebla Centro' }],
-      evaluaciones: [SAMPLE_EVALUATION],
+      evaluaciones: [EVALUACION_CORTA],
     };
     expect(PaqueteSchema.safeParse(paquete).success).toBe(true);
   });
@@ -71,7 +71,7 @@ describe('esquema del paquete de POI', () => {
 });
 
 describe('niveles y puntuación de la evaluación', () => {
-  const niveles = SAMPLE_EVALUATION.niveles;
+  const niveles = EVALUACION_CORTA.niveles;
   it('asigna nivel por umbral', () => {
     expect(levelFor(10, niveles)).toBe('Básico');
     expect(levelFor(60, niveles)).toBe('Intermedio');
@@ -95,7 +95,7 @@ describe('sesión de evaluación', () => {
   const participant: Participant = { uuid: 'p1', nombre: 'Ana', apellidos: 'Pérez', puestoId: 1, sucursalId: 4, aceptoPrivacidadEn: '2026-10-21T16:00:00.000Z' };
   const make = () => {
     const clock = new ManualClock();
-    return { clock, s: new EvaluationSession(SAMPLE_EVALUATION, participant, { clock, uuid: counterUuid('s') }) };
+    return { clock, s: new EvaluationSession(EVALUACION_CORTA, participant, { clock, uuid: counterUuid('s') }) };
   };
 
   it('recorre las tareas en orden y produce los registros para POI', () => {

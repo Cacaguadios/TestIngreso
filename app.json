@@ -8,6 +8,7 @@
     "scheme": "rolyeval",
     "userInterfaceStyle": "automatic",
     "android": {
+      "package": "mx.roly.evaluacion",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -40,6 +41,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6a07a7b9-dc2c-4b66-8095-80728ee7d67d"
+      }
+    },
+    "owner": "kian11"
   }
 }

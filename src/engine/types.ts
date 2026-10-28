@@ -16,26 +16,63 @@ export interface PhoneState {
     datos: boolean;
     modoAvion: boolean;
     bluetooth: boolean;
+    /** Dispositivo Bluetooth vinculado (p. ej. la bocina de la sucursal). */
+    dispositivoBt: string | null;
   };
+  /** Funciones que se activan desde el Centro de control. */
+  sistema: { linterna: boolean; noMolestar: boolean; ahorroBateria: boolean };
   sonido: { multimedia: number; llamada: number; timbre: number; vibrar: boolean };
   pantallaCfg: { brillo: number; modoOscuro: boolean; brilloAdaptable: boolean };
   navegador: { borrador: string; consulta: string | null; resultadoAbierto: string | null };
   wifiDialogo: { ssid: string | null; clave: string; error: boolean };
   archivos: { consulta: string; abierto: string | null };
-  mensajes: { borrador: string; enviados: { a: string; texto: string }[] };
+  mensajes: {
+    /** Conversación abierta (nombre del contacto). */
+    conversacion: string | null;
+    borrador: string;
+    enviados: { a: string; texto: string }[];
+    /** Último mensaje enviado, para poder escribir condiciones sobre él. */
+    ultimo: { a: string; texto: string } | null;
+  };
   contactos: { seleccionado: string | null };
+  /** Teléfono. `numero` y `enLlamada` guardan solo dígitos. */
+  telefono: { numero: string; enLlamada: string | null; llamadas: string[] };
+  camara: { fotos: number };
+  mapas: { consulta: string; buscado: string | null; ruta: boolean };
 }
 
 export type DeepPartial<T> = { [K in keyof T]?: T[K] extends (infer U)[] ? U[] : T[K] extends object ? DeepPartial<T[K]> : T[K] };
 
-export type ToggleKey = 'wifi' | 'modoAvion' | 'bluetooth' | 'datos' | 'vibrar' | 'modoOscuro' | 'brilloAdaptable';
+export type ToggleKey =
+  | 'wifi'
+  | 'modoAvion'
+  | 'bluetooth'
+  | 'datos'
+  | 'vibrar'
+  | 'modoOscuro'
+  | 'brilloAdaptable'
+  | 'linterna'
+  | 'noMolestar'
+  | 'ahorroBateria';
 export type SliderKey = 'brillo' | 'volMultimedia' | 'volLlamada' | 'volTimbre';
-export type TextField = 'navegador.borrador' | 'wifi.clave' | 'archivos.consulta' | 'mensajes.borrador';
+export type TextField =
+  | 'navegador.borrador'
+  | 'wifi.clave'
+  | 'archivos.consulta'
+  | 'mensajes.borrador'
+  | 'telefono.numero'
+  | 'mapas.consulta';
 export type SubmitField =
   | 'navegador.buscar'
   | 'wifi.conectar'
   | 'archivos.buscar'
-  | 'mensajes.enviar';
+  | 'mensajes.enviar'
+  | 'telefono.llamar'
+  | 'telefono.colgar'
+  | 'camara.disparar'
+  | 'mapas.buscar'
+  | 'mapas.ruta';
+export type SelectGroup = 'red' | 'resultado' | 'sugerencia' | 'archivo' | 'contacto' | 'conversacion' | 'llamar' | 'bt' | 'lugar';
 
 /** Todo lo que el candidato puede hacer en el teléfono simulado. */
 export type PhoneAction =
@@ -45,7 +82,7 @@ export type PhoneAction =
   | { type: 'recents' }
   | { type: 'toggle'; key: ToggleKey }
   | { type: 'slide'; key: SliderKey; value: number }
-  | { type: 'select'; group: 'red' | 'resultado' | 'sugerencia' | 'archivo' | 'contacto'; value: string }
+  | { type: 'select'; group: SelectGroup; value: string }
   | { type: 'set_text'; field: TextField; value: string }
   | { type: 'submit'; field: SubmitField }
   | { type: 'tap_empty' };
@@ -56,6 +93,8 @@ export type Cond =
   | { estado: string; igual: unknown }
   | { estado: string; contiene: string }
   | { estado: string; existe: boolean }
+  | { estado: string; mayorIgual: number }
+  | { estado: string; menorIgual: number }
   | { visito: string }
   | { evento: string }
   | { todas: Cond[] }
@@ -87,8 +126,11 @@ export interface TaskDefinition {
   rutasValidas: string[][];
   acciones?: { error?: string[]; neutras?: string[] };
   ayudas: string[];
-  /** Si existe, tras la última pista se ofrece "Mostrarme" resaltando este elemento. */
-  mostrarme?: string;
+  /**
+   * Si existe, tras la última pista se ofrece "Mostrarme": resalta en orden los elementos a tocar
+   * (uno por pantalla) hasta que termina la tarea.
+   */
+  mostrarme?: string | string[];
   tiempoReferenciaSeg: number;
   /** `null` = sin límite (p. ej. tarea de práctica). */
   tiempoLimiteSeg: number | null;

@@ -25,7 +25,8 @@ const emptyDraft: Draft = { nombre: '', apellidos: '', puestoId: null, pin: '', 
 
 export interface HintState {
   texto: string | null;
-  resaltar: string | null;
+  /** Ruta que "Mostrarme" señala (se mantiene hasta que termina la tarea). */
+  resaltar: string[];
   numero: number;
 }
 
@@ -59,7 +60,7 @@ interface Store {
   reset(): void;
 }
 
-const noHint: HintState = { texto: null, resaltar: null, numero: 0 };
+const noHint: HintState = { texto: null, resaltar: [], numero: 0 };
 
 export const useStore = create<Store>((set, get) => {
   const sync = () => {
@@ -152,8 +153,6 @@ export const useStore = create<Store>((set, get) => {
       const r = get().runner;
       if (!r) return;
       r.dispatch(action);
-      // Ya mostró lo que se pidió resaltar: al primer movimiento se quita el resaltado.
-      if (get().hint.resaltar) set({ hint: { ...get().hint, resaltar: null } });
       sync();
     },
 
@@ -165,8 +164,8 @@ export const useStore = create<Store>((set, get) => {
       set({
         hint:
           h.tipo === 'pista'
-            ? { texto: h.texto, resaltar: null, numero: r.hintsUsed }
-            : { texto: 'Te mostramos dónde tocar.', resaltar: h.objetivo, numero: r.hintsUsed },
+            ? { texto: h.texto, resaltar: get().hint.resaltar, numero: r.hintsUsed }
+            : { texto: 'Sigue el contorno verde: te indica qué tocar en cada pantalla.', resaltar: h.objetivos, numero: r.hintsUsed },
       });
     },
 

@@ -1,33 +1,17 @@
-import { DatabaseSync } from 'node:sqlite';
 import { describe, expect, it } from 'vitest';
 import { migrate, type Db } from '../../src/db/db';
 import { applyResponse, nextBatch, pendingAttemptsCount, purgeCompleted, saveAttempt, staleAttempts, closeStaleAttempt, type SyncBatch, type SyncResponse } from '../../src/db/repo';
 import { counterUuid, ManualClock } from '../../src/engine/clock';
 import { EvaluationSession } from '../../src/engine/session';
-import { SAMPLE_EVALUATION } from '../../src/data/sample-evaluation';
+import { EVALUACION_CORTA } from '../../src/data/sample-evaluation';
 import { syncPending } from '../../src/sync/sync';
 import { A, WIFI_RUTA_1 } from '../engine/helpers';
-
-type Param = string | number | bigint | null;
-function openMemory(): Db {
-  const raw = new DatabaseSync(':memory:');
-  const p = (a?: unknown[]) => (a ?? []) as Param[];
-  return {
-    execAsync: async (sql) => { raw.exec(sql); },
-    runAsync: async (sql, params) => raw.prepare(sql).run(...p(params)),
-    getAllAsync: async <T>(sql: string, params?: unknown[]) => raw.prepare(sql).all(...p(params)) as T[],
-    getFirstAsync: async <T>(sql: string, params?: unknown[]) => (raw.prepare(sql).get(...p(params)) as T | undefined) ?? null,
-    withTransactionAsync: async (task) => {
-      raw.exec('BEGIN');
-      try { await task(); raw.exec('COMMIT'); } catch (e) { raw.exec('ROLLBACK'); throw e; }
-    },
-  };
-}
+import { openMemory } from './memory-db';
 
 function playSession(extra = 0) {
   const clock = new ManualClock();
   const s = new EvaluationSession(
-    SAMPLE_EVALUATION,
+    EVALUACION_CORTA,
     { uuid: 'p1', nombre: 'Ana', apellidos: 'Pérez', puestoId: 1, sucursalId: 4, aceptoPrivacidadEn: '2026-10-21T16:00:00Z' },
     { clock, uuid: counterUuid('x') },
   );
@@ -120,7 +104,7 @@ describe('SQLite local + sincronización', () => {
   it('un intento en curso no se envía; si la app se cerró se marca abandonado y entonces sí', async () => {
     const db = openMemory(); await migrate(db);
     const clock = new ManualClock();
-    const s = new EvaluationSession(SAMPLE_EVALUATION, { uuid: 'p2', nombre: 'Luis', apellidos: 'Gómez', puestoId: 1, sucursalId: 4, aceptoPrivacidadEn: 'x' }, { clock, uuid: counterUuid('y') });
+    const s = new EvaluationSession(EVALUACION_CORTA, { uuid: 'p2', nombre: 'Luis', apellidos: 'Gómez', puestoId: 1, sucursalId: 4, aceptoPrivacidadEn: 'x' }, { clock, uuid: counterUuid('y') });
     const r = s.startTask(); r.dispatch(A.abrir('ajustes')); s.finishTask();
     await saveAttempt(db, s.toRecords());
     expect(await nextBatch(db)).toBeNull();

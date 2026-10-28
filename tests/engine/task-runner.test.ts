@@ -123,7 +123,12 @@ describe('búsqueda en el navegador', () => {
     runner.dispatch({ type: 'set_text', field: 'navegador.borrador', value: 'Cómo cambiar una LLANTA' });
     runner.dispatch({ type: 'submit', field: 'navegador.buscar' });
     expect(runner.estado).toBe('en_curso'); // falta abrir un resultado
-    const out = runner.dispatch({ type: 'select', group: 'resultado', value: 'llanta-2' });
+    // Abrir un resultado que no es la guía pedida todavía no completa la tarea.
+    const otro = runner.dispatch({ type: 'select', group: 'resultado', value: 'llanta-2' });
+    expect(otro?.clase).toBe('desviacion');
+    expect(runner.estado).toBe('en_curso');
+    runner.dispatch(A.atras);
+    const out = runner.dispatch({ type: 'select', group: 'resultado', value: 'llanta-1' });
     expect(out?.clase).toBe('necesaria');
     expect(runner.estado).toBe('completada');
   });
@@ -146,7 +151,7 @@ describe('ayudas', () => {
     expect(runner.requestHint()).toMatchObject({ tipo: 'pista', indice: 0 });
     expect(runner.requestHint()).toMatchObject({ tipo: 'pista', indice: 1 });
     expect(runner.requestHint()).toMatchObject({ tipo: 'pista', indice: 2 });
-    expect(runner.requestHint()).toEqual({ tipo: 'mostrarme', objetivo: 'ajustes.red' });
+    expect(runner.requestHint()).toEqual({ tipo: 'mostrarme', objetivos: ['app.ajustes', 'ajustes.red', 'ajustes.internet', 'ajustes.wifi', 'red.Roly-Sucursal'] });
     expect(runner.requestHint()).toBeNull();
     expect(runner.hasMoreHints).toBe(false);
     expect(runner.events.filter((e) => e.tipo === 'ayuda.mostrada')).toHaveLength(4);

@@ -42,6 +42,8 @@ export function evaluate(cond: Cond, ctx: EvalContext): boolean {
   if ('contiene' in cond) {
     return typeof value === 'string' && normalizeText(value).includes(normalizeText(cond.contiene));
   }
+  if ('mayorIgual' in cond) return typeof value === 'number' && value >= cond.mayorIgual;
+  if ('menorIgual' in cond) return typeof value === 'number' && value <= cond.menorIgual;
   const exists = value !== null && value !== undefined && value !== '';
   return exists === cond.existe;
 }

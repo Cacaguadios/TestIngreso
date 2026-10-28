@@ -28,7 +28,7 @@ export interface DispatchOutcome {
 
 export type HintResult =
   | { tipo: 'pista'; indice: number; texto: string }
-  | { tipo: 'mostrarme'; objetivo: string };
+  | { tipo: 'mostrarme'; objetivos: string[] };
 
 /**
  * Ejecuta UNA tarea: aplica las acciones al teléfono, las clasifica, registra eventos,
@@ -154,8 +154,9 @@ export class TaskRunner {
     if (this.task.mostrarme && !this.guiada) {
       this.guiada = true;
       this.ayudas++;
-      this.record('ayuda.mostrada', this.task.mostrarme, { tipo: 'mostrarme' }, null);
-      return { tipo: 'mostrarme', objetivo: this.task.mostrarme };
+      const objetivos = typeof this.task.mostrarme === 'string' ? [this.task.mostrarme] : this.task.mostrarme;
+      this.record('ayuda.mostrada', objetivos.join(','), { tipo: 'mostrarme' }, null);
+      return { tipo: 'mostrarme', objetivos };
     }
     return null;
   }

@@ -9,7 +9,7 @@ Documentación de diseño y decisiones: [`docs/`](docs).
 
 ```bash
 npm install
-npm test            # 60 pruebas de los motores, SQLite y sincronización (Vitest, sin dispositivo)
+npm test            # 83 pruebas: motores, las 15 tareas, SQLite y sincronización (Vitest, sin dispositivo)
 npm run typecheck   # TypeScript estricto
 npm start           # Expo: escanear el QR con Expo Go (Android)
 ```
@@ -19,6 +19,26 @@ en la pantalla de configuración del equipo: **7 toques seguidos en el logo** de
 
 > Expo Go sirve para desarrollar. Para el teléfono asignado (modo pantalla completa / kiosco) hará falta una
 > *development build* (`expo-dev-client`) y, más adelante, el módulo Kotlin de Lock Task (ver docs/00_DECISIONES.md D-01).
+
+### Prueba contra un POI real
+
+```bash
+POI_URL=http://127.0.0.1:8000/api/evaluacion/v1 POI_CODIGO=<código de POI> npx vitest run tests/integracion
+```
+
+### Generar la APK
+
+Se compila en la nube de Expo (EAS, proyecto `@kian11/roly-evaluacion`); no hace falta Android Studio.
+El perfil `apk` de `eas.json` apunta a `https://poi.roly.mx/api/evaluacion/v1`.
+
+```bash
+npx eas-cli@latest login                                   # una sola vez
+EAS_NO_VCS=1 npx eas-cli@latest build -p android --profile apk
+```
+
+Al terminar, descarga el `.apk` y publícalo en POI (**Evaluación digital › App móvil**, o
+`php artisan evaluacion:publicar-apk <ruta> --app-version=1.0.0`). POI muestra el enlace y el QR para instalarla.
+Para una versión nueva, sube `version` en `app.json` (el `versionCode` lo incrementa EAS).
 
 ## Estructura
 
@@ -49,9 +69,15 @@ tests/          Pruebas de motores, base de datos y sincronización
 
 ## Alcance de esta versión
 
-Funcionan: registro, aviso de privacidad, práctica, progreso, ayudas progresivas ("Mostrarme"), tiempo límite,
-omitir, resultado por tarea, cierre, sincronización con reintentos, y las apps simuladas **Inicio, Ajustes
-(Red e Internet, Internet/Wi-Fi con contraseña, Bluetooth, Sonido, Pantalla), Ajustes rápidos y Navegador**.
+Funcionan: registro, aviso de privacidad, práctica, progreso, ayudas progresivas ("Mostrarme" guiado paso a paso),
+tiempo límite, omitir (con confirmación), resultado por tarea, cierre y sincronización con reintentos.
 
-El motor ya soporta Archivos y Mensajes (búsqueda, enviar), pero sus pantallas muestran
-"disponible en una versión posterior" (Galería, Cámara, Contactos, Mapas y Teléfono igual).
+Apps simuladas: **Inicio, Centro de control** (se abre tocando o deslizando la barra de estado), **Ajustes**
+(Red e Internet, Wi-Fi con contraseña, Bluetooth con dispositivos, Sonido, Pantalla), **Navegador, Archivos**
+(búsqueda, categorías y visor), **Mensajes, Contactos, Teléfono** (marcador y llamada), **Cámara, Galería y Mapas**.
+El brillo del teléfono simulado oscurece la pantalla de verdad.
+
+La evaluación de ejemplo (`src/data/sample-evaluation.ts`) tiene 1 práctica y **15 tareas** de dificultad creciente:
+abrir el navegador, linterna, tomar foto, quitar modo avión, subir brillo, silenciar el timbre, llamar a un contacto,
+marcar un número, buscar en Internet, encontrar el sitio oficial, conectar una bocina Bluetooth, enviar un mensaje,
+abrir un archivo, pedir la ruta en Mapas y conectarse a un Wi-Fi con contraseña.

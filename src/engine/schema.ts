@@ -14,6 +14,8 @@ export const CondSchema = z.lazy((): z.ZodType<Cond> =>
     z.object({ evento: z.string().min(1) }),
     z.object({ estado: z.string().min(1), contiene: z.string() }),
     z.object({ estado: z.string().min(1), existe: z.boolean() }),
+    z.object({ estado: z.string().min(1), mayorIgual: z.number() }),
+    z.object({ estado: z.string().min(1), menorIgual: z.number() }),
     z.object({ estado: z.string().min(1), igual: z.unknown() }).refine((o) => 'igual' in o),
   ]) as unknown as z.ZodType<Cond>,
 );
@@ -36,7 +38,7 @@ export const TaskDefinitionSchema = z
     rutasValidas: z.array(z.array(z.string().min(1)).min(1)).min(1),
     acciones: z.object({ error: z.array(z.string()).optional(), neutras: z.array(z.string()).optional() }).optional(),
     ayudas: z.array(z.string().min(1)),
-    mostrarme: z.string().optional(),
+    mostrarme: z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]).optional(),
     tiempoReferenciaSeg: z.number().positive(),
     tiempoLimiteSeg: z.number().positive().nullable(),
   })

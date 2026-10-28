@@ -177,7 +177,7 @@ export class EvaluationSession {
         errores: c.result.conteo.error,
         ayudas: c.result.ayudas,
         puntuacion: c.score.puntuacion,
-        detalle: { conteo: c.result.conteo, hitos: c.result.hitos, desglose: c.score.desglose, toquesVacios: c.result.toquesVacios },
+        detalle: { conteo: c.result.conteo, hitos: c.result.hitos, guiada: c.result.guiada, desglose: c.score.desglose, toquesVacios: c.result.toquesVacios },
       })),
       eventos,
     };

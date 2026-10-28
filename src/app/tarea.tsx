@@ -1,10 +1,24 @@
 import { router } from 'expo-router';
-import { View } from 'react-native';
-import { Pressable } from 'react-native';
+import { useState } from 'react';
+import { Pressable, View } from 'react-native';
 import { useStore } from '../state/store';
-import { AppText, Button, Card, Icon, IconBadge, Screen } from '../ui/components';
+import { AppText, Button, Card, Icon, IconBadge, Screen, type IconName } from '../ui/components';
 import { colors } from '../ui/theme';
 import { useBlockBack } from '../ui/use-block-back';
+
+/** Ícono y nombre visible de cada categoría de tarea. */
+const CATEGORIAS: Record<string, { icono: IconName; nombre: string }> = {
+  practica: { icono: 'school', nombre: 'Práctica' },
+  navegacion: { icono: 'public', nombre: 'Internet' },
+  conectividad: { icono: 'wifi', nombre: 'Conectividad' },
+  sistema: { icono: 'flashlight-on', nombre: 'Funciones del teléfono' },
+  pantalla: { icono: 'brightness-6', nombre: 'Pantalla' },
+  sonido: { icono: 'volume-up', nombre: 'Sonido' },
+  camara: { icono: 'photo-camera', nombre: 'Cámara' },
+  comunicacion: { icono: 'call', nombre: 'Llamadas y mensajes' },
+  archivos: { icono: 'folder', nombre: 'Archivos' },
+  mapas: { icono: 'place', nombre: 'Mapas' },
+};
 
 const fmt = (s: number) => (s >= 60 ? `${Math.round(s / 60)} ${Math.round(s / 60) === 1 ? 'minuto' : 'minutos'}` : `${s} segundos`);
 
@@ -12,11 +26,13 @@ export default function DetalleTarea() {
   const session = useStore((s) => s.session);
   const beginTask = useStore((s) => s.beginTask);
   const skipTask = useStore((s) => s.skipTask);
-  useBlockBack();
+  const [confirmar, setConfirmar] = useState(false);
+  useBlockBack(() => setConfirmar(false));
   const slot = session?.currentSlot;
   if (!session || !slot) return null;
   const t = slot.definicion;
   const numero = session.calificadasHechas + (slot.practica ? 0 : 1);
+  const cat = CATEGORIAS[t.categoria] ?? { icono: 'smartphone' as IconName, nombre: t.categoria.charAt(0).toUpperCase() + t.categoria.slice(1) };
 
   const abrir = () => {
     beginTask();
@@ -31,19 +47,27 @@ export default function DetalleTarea() {
   return (
     <Screen
       title={slot.practica ? 'Tarea de práctica' : `Tarea ${String(numero).padStart(2, '0')} de ${session.calificadasTotal}`}
-      subtitle={slot.practica ? 'Conoce el teléfono simulado' : t.categoria.charAt(0).toUpperCase() + t.categoria.slice(1)}
+      subtitle={slot.practica ? 'Conoce el teléfono simulado' : cat.nombre}
       footer={
-        <>
-          <Button label="Abrir teléfono simulado" onPress={abrir} />
-          <Pressable onPress={omitir} accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 8 }}>
-            <AppText style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.muted }}>No sé cómo hacerlo · Omitir tarea</AppText>
-          </Pressable>
-        </>
+        confirmar ? (
+          <>
+            <AppText variant="small" style={{ textAlign: 'center', marginBottom: 4 }}>La tarea quedará como no completada y no podrás regresar a ella.</AppText>
+            <Button label="Sí, omitir esta tarea" variant="secondary" onPress={omitir} />
+            <Button label="Mejor la intento" onPress={() => setConfirmar(false)} />
+          </>
+        ) : (
+          <>
+            <Button label="Abrir teléfono simulado" icon="smartphone" onPress={abrir} />
+            <Pressable onPress={() => setConfirmar(true)} accessibilityRole="button" style={{ alignItems: 'center', paddingVertical: 8 }}>
+              <AppText style={{ fontFamily: 'Inter_600SemiBold', fontSize: 13, color: colors.muted }}>No sé cómo hacerlo · Omitir tarea</AppText>
+            </Pressable>
+          </>
+        )
       }
     >
       <Card style={{ padding: 20, gap: 10 }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <IconBadge name="settings" size={56} />
+          <IconBadge name={cat.icono} size={56} />
           {slot.practica ? (
             <View style={{ backgroundColor: colors.primarySoft, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 6 }}>
               <AppText style={{ fontFamily: 'Inter_700Bold', fontSize: 11, color: colors.primaryDark }}>NO CUENTA</AppText>

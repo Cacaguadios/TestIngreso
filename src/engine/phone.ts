@@ -22,7 +22,13 @@ export const SCREEN_IDS = [
   'navegador.pagina',
   'archivos',
   'archivos.busqueda',
+  'archivos.documentos',
+  'archivos.imagenes',
+  'archivos.videos',
+  'archivos.audio',
+  'archivos.visor',
   'mensajes',
+  'mensajes.nuevo',
   'mensajes.redactar',
   'galeria',
   'camara',
@@ -30,23 +36,30 @@ export const SCREEN_IDS = [
   'contactos.detalle',
   'mapas',
   'telefono',
+  'telefono.llamada',
 ] as const;
 
 const KNOWN = new Set<string>(SCREEN_IDS);
 export const isKnownScreen = (id: string): boolean => KNOWN.has(id);
 
+const onlyDigits = (s: string) => s.replace(/\D/g, '');
+
 export function createInitialState(overrides?: DeepPartial<PhoneState>): PhoneState {
   const base: PhoneState = {
     pantalla: 'inicio',
     pila: [],
-    conectividad: { wifi: false, redWifi: null, datos: true, modoAvion: false, bluetooth: false },
+    conectividad: { wifi: false, redWifi: null, datos: true, modoAvion: false, bluetooth: false, dispositivoBt: null },
+    sistema: { linterna: false, noMolestar: false, ahorroBateria: false },
     sonido: { multimedia: 60, llamada: 50, timbre: 70, vibrar: true },
     pantallaCfg: { brillo: 60, modoOscuro: false, brilloAdaptable: false },
     navegador: { borrador: '', consulta: null, resultadoAbierto: null },
     wifiDialogo: { ssid: null, clave: '', error: false },
     archivos: { consulta: '', abierto: null },
-    mensajes: { borrador: '', enviados: [] },
+    mensajes: { conversacion: null, borrador: '', enviados: [], ultimo: null },
     contactos: { seleccionado: null },
+    telefono: { numero: '', enLlamada: null, llamadas: [] },
+    camara: { fotos: 0 },
+    mapas: { consulta: '', buscado: null, ruta: false },
   };
   return overrides ? mergeDeep(base, overrides) : base;
 }
@@ -71,12 +84,24 @@ function goto(s: PhoneState, target: string): PhoneState {
   return { ...s, pantalla: target, pila: [...s.pila, s.pantalla] };
 }
 
+/** Limpia lo que no debe sobrevivir al salir de una pantalla (diálogos, llamada en curso). */
+function leaving(s: PhoneState, from: string): PhoneState {
+  if (from === 'wifi.contrasena') return { ...s, wifiDialogo: { ssid: null, clave: '', error: false } };
+  if (from === 'telefono.llamada') return { ...s, telefono: { ...s.telefono, enLlamada: null } };
+  return s;
+}
+
 function goBack(s: PhoneState): PhoneState {
   if (s.pila.length === 0) return s;
   const pila = s.pila.slice(0, -1);
   const pantalla = s.pila[s.pila.length - 1]!;
-  const next: PhoneState = { ...s, pantalla, pila };
-  if (s.pantalla === 'wifi.contrasena') next.wifiDialogo = { ssid: null, clave: '', error: false };
+  return leaving({ ...s, pantalla, pila }, s.pantalla);
+}
+
+function goHome(s: PhoneState): PhoneState {
+  if (s.pantalla === 'inicio' && s.pila.length === 0) return s;
+  let next: PhoneState = { ...s, pantalla: 'inicio', pila: [] };
+  for (const p of [s.pantalla, ...s.pila]) next = leaving(next, p);
   return next;
 }
 
@@ -94,13 +119,16 @@ function toggle(s: PhoneState, key: ToggleKey): PhoneState {
       return {
         ...s,
         conectividad: modoAvion
-          ? { ...c, modoAvion, wifi: false, redWifi: null, bluetooth: false }
+          ? { ...c, modoAvion, wifi: false, redWifi: null, bluetooth: false, dispositivoBt: null }
           : { ...c, modoAvion },
       };
     }
-    case 'bluetooth':
+    case 'bluetooth': {
       // Con modo avión activo, Bluetooth no se puede encender (igual que en Android).
-      return c.modoAvion ? s : { ...s, conectividad: { ...c, bluetooth: !c.bluetooth } };
+      if (c.modoAvion && !c.bluetooth) return s;
+      const bluetooth = !c.bluetooth;
+      return { ...s, conectividad: { ...c, bluetooth, dispositivoBt: bluetooth ? c.dispositivoBt : null } };
+    }
     case 'datos':
       return { ...s, conectividad: { ...c, datos: !c.datos } };
     case 'vibrar':
@@ -109,6 +137,10 @@ function toggle(s: PhoneState, key: ToggleKey): PhoneState {
       return { ...s, pantallaCfg: { ...s.pantallaCfg, modoOscuro: !s.pantallaCfg.modoOscuro } };
     case 'brilloAdaptable':
       return { ...s, pantallaCfg: { ...s.pantallaCfg, brilloAdaptable: !s.pantallaCfg.brilloAdaptable } };
+    case 'linterna':
+    case 'noMolestar':
+    case 'ahorroBateria':
+      return { ...s, sistema: { ...s.sistema, [key]: !s.sistema[key] } };
   }
 }
 
@@ -128,6 +160,12 @@ function slide(s: PhoneState, key: SliderKey, raw: number): PhoneState {
 
 // ───────────────────────────── Selección y envío ─────────────────────────────
 
+function startCall(s: PhoneState, numero: string): PhoneState {
+  const n = onlyDigits(numero);
+  if (!n) return s;
+  return goto({ ...s, telefono: { numero: '', enLlamada: n, llamadas: [...s.telefono.llamadas, n] } }, 'telefono.llamada');
+}
+
 function select(s: PhoneState, a: Extract<PhoneAction, { type: 'select' }>, w: World): PhoneState {
   switch (a.group) {
     case 'red': {
@@ -146,9 +184,24 @@ function select(s: PhoneState, a: Extract<PhoneAction, { type: 'select' }>, w: W
       return goto({ ...base, navegador: { borrador: consulta, consulta, resultadoAbierto: null } }, 'navegador.resultados');
     }
     case 'archivo':
-      return { ...s, archivos: { ...s.archivos, abierto: a.value } };
+      return goto({ ...s, archivos: { ...s.archivos, abierto: a.value } }, 'archivos.visor');
     case 'contacto':
       return goto({ ...s, contactos: { seleccionado: a.value } }, 'contactos.detalle');
+    case 'conversacion': {
+      // Desde "Nuevo chat" se reemplaza esa pantalla por la conversación (como en Android).
+      const base = s.pantalla === 'mensajes.nuevo' ? goBack(s) : s;
+      return goto({ ...base, mensajes: { ...base.mensajes, conversacion: a.value, borrador: '' } }, 'mensajes.redactar');
+    }
+    case 'llamar':
+      return startCall(s, a.value);
+    case 'bt':
+      if (!s.conectividad.bluetooth || !w.dispositivosBt.some((d) => d.nombre === a.value)) return s;
+      return { ...s, conectividad: { ...s.conectividad, dispositivoBt: s.conectividad.dispositivoBt === a.value ? null : a.value } };
+    case 'lugar': {
+      const lugar = a.value.trim();
+      if (!lugar) return s;
+      return { ...s, mapas: { consulta: lugar, buscado: lugar, ruta: false } };
+    }
   }
 }
 
@@ -180,8 +233,22 @@ function submit(s: PhoneState, field: Extract<PhoneAction, { type: 'submit' }>['
     case 'mensajes.enviar': {
       const texto = s.mensajes.borrador.trim();
       if (!texto) return s;
-      return { ...s, mensajes: { borrador: '', enviados: [...s.mensajes.enviados, { a: 'Ana López', texto }] } };
+      const msg = { a: s.mensajes.conversacion ?? 'Ana López', texto };
+      return { ...s, mensajes: { ...s.mensajes, borrador: '', enviados: [...s.mensajes.enviados, msg], ultimo: msg } };
     }
+    case 'telefono.llamar':
+      return startCall(s, s.telefono.numero);
+    case 'telefono.colgar':
+      return s.pantalla === 'telefono.llamada' ? goBack(s) : s;
+    case 'camara.disparar':
+      return { ...s, camara: { fotos: s.camara.fotos + 1 } };
+    case 'mapas.buscar': {
+      const consulta = s.mapas.consulta.trim();
+      if (!consulta) return s;
+      return { ...s, mapas: { consulta, buscado: consulta, ruta: false } };
+    }
+    case 'mapas.ruta':
+      return s.mapas.buscado ? { ...s, mapas: { ...s.mapas, ruta: true } } : s;
   }
 }
 
@@ -195,6 +262,10 @@ function setText(s: PhoneState, field: Extract<PhoneAction, { type: 'set_text' }
       return { ...s, archivos: { ...s.archivos, consulta: value } };
     case 'mensajes.borrador':
       return { ...s, mensajes: { ...s.mensajes, borrador: value } };
+    case 'telefono.numero':
+      return { ...s, telefono: { ...s.telefono, numero: onlyDigits(value).slice(0, 15) } };
+    case 'mapas.consulta':
+      return { ...s, mapas: { ...s.mapas, consulta: value } };
   }
 }
 
@@ -207,7 +278,7 @@ export function reducePhone(s: PhoneState, a: PhoneAction, w: World = DEFAULT_WO
     case 'back':
       return goBack(s);
     case 'home':
-      return s.pantalla === 'inicio' && s.pila.length === 0 ? s : { ...s, pantalla: 'inicio', pila: [], wifiDialogo: { ssid: null, clave: '', error: false } };
+      return goHome(s);
     case 'recents':
     case 'tap_empty':
       return s;
@@ -299,6 +370,10 @@ function readToggle(s: PhoneState, key: ToggleKey): boolean {
     case 'modoOscuro':
     case 'brilloAdaptable':
       return s.pantallaCfg[key];
+    case 'linterna':
+    case 'noMolestar':
+    case 'ahorroBateria':
+      return s.sistema[key];
   }
 }
 

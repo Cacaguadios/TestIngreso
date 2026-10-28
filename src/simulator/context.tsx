@@ -5,8 +5,13 @@ import { DEFAULT_WORLD, type World } from '../engine/world';
 export interface SimContextValue {
   state: PhoneState;
   dispatch: (a: PhoneAction) => void;
-  /** Id del elemento a resaltar cuando el candidato usó "Mostrarme". */
-  highlight: string | null;
+  /**
+   * Elemento que "Mostrarme" está señalando ahora mismo (o null).
+   * Es el último elemento de la ruta guiada que está visible en pantalla.
+   */
+  activeHighlight: string | null;
+  /** Los elementos resaltables avisan que están en pantalla (para elegir cuál señalar). */
+  registerHit: (id: string) => () => void;
   world: World;
 }
 

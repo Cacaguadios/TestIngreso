@@ -8,17 +8,24 @@ pantallas y estados que el simulador ya soporta.
 
 El estado vive en `src/engine/phone.ts` (`PhoneState`). Las tareas lo leen con rutas como
 `conectividad.wifi`, `conectividad.redWifi`, `navegador.consulta`, `navegador.resultadoAbierto`,
-`sonido.multimedia`, `pantallaCfg.brillo`, `mensajes.enviados`.
+`sonido.timbre`, `pantallaCfg.brillo`, `sistema.linterna`, `conectividad.dispositivoBt`, `mensajes.ultimo.a`,
+`mensajes.ultimo.texto`, `telefono.enLlamada` (solo dígitos), `camara.fotos`, `archivos.abierto`, `mapas.buscado`, `mapas.ruta`.
 
 **Pantallas (ids estables):** `inicio`, `ajustes_rapidos`, `ajustes`, `ajustes.red`, `ajustes.internet`,
 `ajustes.bluetooth`, `ajustes.sonido`, `ajustes.pantalla`, `wifi.contrasena`, `navegador`,
 `navegador.escribiendo`, `navegador.resultados`, `navegador.pagina`, `archivos`, `archivos.busqueda`,
-`mensajes`, `mensajes.redactar`, `galeria`, `camara`, `contactos`, `contactos.detalle`, `mapas`, `telefono`.
+`archivos.documentos`, `archivos.imagenes`, `archivos.videos`, `archivos.audio`, `archivos.visor`,
+`mensajes`, `mensajes.nuevo`, `mensajes.redactar`, `galeria`, `camara`, `contactos`, `contactos.detalle`, `mapas`,
+`telefono`, `telefono.llamada`.
 
 **Claves de acción** (vocabulario de `rutasValidas` y `acciones`; `*` al final es comodín):
-`abrir:<pantalla>`, `atras`, `inicio`, `recientes`, `toggle:<wifi|modoAvion|bluetooth|datos|vibrar|modoOscuro|brilloAdaptable>`,
-`deslizar:<brillo|volMultimedia|volLlamada|volTimbre>`, `seleccionar:<red|resultado|sugerencia|archivo|contacto>:<valor>`,
-`texto:<campo>`, `enviar:<navegador.buscar|wifi.conectar|archivos.buscar|mensajes.enviar>`, `toque.vacio`.
+`abrir:<pantalla>`, `atras`, `inicio`, `recientes`,
+`toggle:<wifi|modoAvion|bluetooth|datos|vibrar|modoOscuro|brilloAdaptable|linterna|noMolestar|ahorroBateria>`,
+`deslizar:<brillo|volMultimedia|volLlamada|volTimbre>`,
+`seleccionar:<red|resultado|sugerencia|archivo|contacto|conversacion|llamar|bt|lugar>:<valor>` (`llamar` lleva el número en dígitos),
+`texto:<navegador.borrador|wifi.clave|archivos.consulta|mensajes.borrador|telefono.numero|mapas.consulta>`,
+`enviar:<navegador.buscar|wifi.conectar|archivos.buscar|mensajes.enviar|telefono.llamar|telefono.colgar|camara.disparar|mapas.buscar|mapas.ruta>`,
+`toque.vacio`.
 
 ## 2. Definición de una tarea
 
@@ -68,6 +75,8 @@ El estado vive en `src/engine/phone.ts` (`PhoneState`). Las tareas lo leen con r
 | `{ "estado": "...", "contiene": "texto" }` | Texto contiene (sin acentos ni mayúsculas) |
 | `{ "visito": "pantalla" }` | En algún momento abrió esa pantalla |
 | `{ "estado": "...", "existe": true }` | El valor no es nulo ni vacío |
+| `{ "estado": "...", "mayorIgual": 50 }` | Número ≥ valor (p. ej. brillo) |
+| `{ "estado": "...", "menorIgual": 5 }` | Número ≤ valor (p. ej. volumen del timbre) |
 | `{ "evento": "tipo:objetivo" }` | Ocurrió ese evento |
 | `{ "todas": [...] }` / `{ "alguna": [...] }` / `{ "no": {...} }` | Combinaciones |
 
@@ -110,10 +119,18 @@ definidos en POI, que se calibran con un piloto con empleados de nivel conocido.
 
 ## 5. Ayudas
 
-- Progresivas: cada toque del botón muestra la siguiente pista de `ayudas`.
+- Progresivas: el botón **Ayuda** abre una hoja; cada pista nueva se pide con "Ver pista N de M".
+  Abrir la hoja no gasta pistas, y volver a leer las ya vistas tampoco.
 - Se registran como evento `ayuda.mostrada` con su índice.
-- La última pista puede ser "mostrarme" (resalta el elemento a tocar). Si se usa,
-  la tarea se marca `completada_con_guia` y el componente de independencia vale 0.
+- Después de la última pista puede venir "Mostrarme". `mostrarme` es un id o una **lista de ids en orden**
+  (p. ej. `["app.ajustes", "ajustes.red", "ajustes.internet"]`): el simulador marca con un contorno verde el
+  último de la lista que esté visible, así la guía avanza sola pantalla por pantalla hasta terminar la tarea.
+  Si se usa, la tarea se marca `completada_con_guia` y el componente de independencia vale 0.
+- Ids señalables: `statusbar`, `app.<id>`, `qs.<wifi|datos|bluetooth|avion|linterna|nomolestar|bateria|oscuro|brillo>`,
+  `ajustes.<red|bluetooth|sonido|pantalla|internet|wifi|avion>`, `red.<ssid>`, `bt.switch`, `bt.<dispositivo>`,
+  `sonido.timbre`, `pantalla.brillo`, `navegador.barra`, `resultado.<id>`, `archivos.buscar`, `archivos.<categoría>`,
+  `archivo.<nombre>`, `conv.<contacto>`, `mensajes.nuevo`, `mensajes.enviar`, `contacto.<nombre>`, `contacto.llamar`,
+  `contacto.mensaje`, `telefono.llamar`, `camara.disparador`, `mapas.buscar`, `mapas.ruta`.
 
 ## 6. Fin de una tarea
 
